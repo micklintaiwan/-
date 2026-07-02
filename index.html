@@ -1,0 +1,128 @@
+<!DOCTYPE html>
+<html lang="zh-TW">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>高雄郵夠讚晚會 中獎名單查詢</title>
+    <style>
+        :root {
+            --primary-color: #00875A; /* 郵局綠 */
+            --accent-color: #FFB800; /* 晚會金 */
+            --bg-color: #F4F7F6;
+        }
+        * { box-sizing: border-box; margin: 0; padding: 0; font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif; }
+        body { background-color: var(--bg-color); color: #333; padding: 20px; display: flex; flex-direction: column; align-items: center; min-height: 100vh; }
+        .container { width: 100%; max-width: 500px; background: white; padding: 25px; border-radius: 16px; box-shadow: 0 8px 24px rgba(0,0,0,0.05); margin-top: 20px; }
+        .header { text-align: center; margin-bottom: 25px; }
+        .header h1 { color: var(--primary-color); font-size: 24px; margin-bottom: 5px; font-weight: bold; }
+        .header p { color: #666; font-size: 14px; }
+        .form-group { margin-bottom: 20px; }
+        label { display: block; font-size: 16px; font-weight: bold; margin-bottom: 8px; color: #444; }
+        select { width: 100%; padding: 14px; font-size: 16px; border: 2px solid #DDD; border-radius: 8px; background-color: #FFF; cursor: pointer; outline: none; transition: border-color 0.3s; -webkit-appearance: none; }
+        select:focus { border-color: var(--primary-color); }
+        .select-wrapper { position: relative; }
+        .select-wrapper::after { content: "▼"; font-size: 12px; color: #999; position: absolute; right: 15px; top: 18px; pointer-events: none; }
+        .result-card { background: linear-gradient(145deg, #ffffff, #f0f0f0); border-left: 5px solid var(--accent-color); padding: 20px; border-radius: 8px; margin-top: 20px; display: none; box-shadow: inset 0 2px 4px rgba(0,0,0,0.02); }
+        .result-item { margin-bottom: 12px; }
+        .result-item:last-child { margin-bottom: 0; }
+        .result-label { font-size: 14px; color: #777; margin-bottom: 4px; }
+        .result-value { font-size: 18px; font-weight: bold; color: #222; }
+        .highlight { color: #E74C3C; font-size: 22px; }
+        .empty-state { text-align: center; color: #999; margin-top: 4px; font-size: 14px; }
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <div class="header">
+        <h1>✉️ 高雄郵夠讚晚會</h1>
+        <p>中獎名單即時查詢系統</p>
+    </div>
+
+    <div class="form-group">
+        <label for="prizeSelect">請選擇獎項名稱：</label>
+        <div class="select-wrapper">
+            <select id="prizeSelect" onchange="queryPrize()">
+                <option value="">-- 請點擊選擇獎項 --</option>
+                <!-- 這裡由 JavaScript 自動生成選項 -->
+            </select>
+        </div>
+    </div>
+
+    <div id="resultCard" class="result-card">
+        <div class="result-item">
+            <div class="result-label">🎁 禮品名稱</div>
+            <div id="giftValue" class="result-value"></div>
+        </div>
+        <div class="result-item" style="margin-top: 15px;">
+            <div class="result-label">🎟️ 中獎號碼</div>
+            <div id="numberValue" class="result-value highlight"></div>
+        </div>
+    </div>
+    
+    <div id="emptyState" class="empty-state">請選擇上方獎項查看結果</div>
+</div>
+
+<script>
+    // 這裡放入您在 Google 試算表中的完整資料庫
+    const prizeDatabase = {
+        "康嘉芳副主委獎": { gift: "SNOOPY同樂旅行袋", number: "請核對現場正本" },
+        "桃園郵局吳進益局長獎": { gift: "帕里巴黎自助平日晚餐", number: "請核對現場正本" },
+        "台中郵局陳樂明局長獎": { gift: "全家禮物卡（1000元）", number: "請核對現場正本" },
+        "詹一新董事獎": { gift: "全家禮物卡（600元）", number: "請核對現場正本" },
+        "台南郵局邱士賢局長獎": { gift: "古寶無患子禮盒", number: "請核對現場正本" },
+        "台南分會王瓊瑤理事長獎": { gift: "現金2000元", number: "請核對現場正本" },
+        "台北分會陳育瑩董事獎": { gift: "全聯禮券（1000元）", number: "請核對現場正本" },
+        "鄭光峰市議員獎": { gift: "KANGOL真空雙飲保溫杯", number: "請核對現場正本" },
+        "陳建良理事長獎": { gift: "全聯禮券（1000元）", number: "請核對現場正本" },
+        "黃麗夏總經理獎": { gift: "高級禮品", number: "請核對現場正本" },
+        "康智庭理事長獎": { gift: "波波鴿便當盒", number: "請核對現場正本" },
+        "高雄郵局科室主管獎": { gift: "14吋歌林電風扇", number: "請核對現場正本" },
+        "王國材董事長獎(禮券)": { gift: "全聯禮券（1000元）", number: "請核對現場正本" },
+        "王國材董事長獎(禮盒)": { gift: "平安好禮禮盒+波波鴿保溫瓶", number: "請核對現場正本" },
+        "高雄郵局尤協理獎": { gift: "三洋二合一清靜除濕機", number: "請核對現場正本" },
+        "高雄郵局許副理獎": { gift: "三洋二合一清靜除濕機", number: "請核對現場正本" },
+        "高雄郵局鄷副理獎": { gift: "三洋二合一清靜除濕機", number: "請核對現場正本" },
+        "中華郵政工會林榮州理事長獎": { gift: "IPHONE 17E 256gb", number: "請核對現場正本" },
+        "高雄郵政工會特獎1": { gift: "IPHONE 17E 256gb", number: "請核對現場正本" },
+        "高雄郵政工會特獎2": { gift: "IPHONE 17E 256gb", number: "請核對現場正本" },
+        "中華郵政公司蔡文慶副總獎(威士忌)": { gift: "噶瑪蘭單一純麥威士忌", number: "請核對現場正本" },
+        "中華郵政公司蔡文慶副總獎(茶禮盒)": { gift: "金采禮盒+手採杉林溪茶", number: "請核對現場正本" },
+        "立法委員李昆澤委員獎": { gift: "高級禮品", number: "請核對現場正本" },
+        "立法委員許智傑委員獎": { gift: "高級禮品", number: "請核對現場正本" },
+        "高雄市勞工局江健興局長獎": { gift: "高級禮品", number: "請核對現場正本" },
+        "高雄市產業總工會林順基理事長獎": { gift: "高級禮品", number: "請核對現場正本" },
+        "中鋼工會楊乙記理事長獎": { gift: "全聯禮券（1000元）", number: "請核對現場正本" },
+        "高雄郵政工會副理事長獎": { gift: "現金1000元", number: "請核對現場正本" }
+    };
+
+    // 初始化下拉選單
+    const selectEl = document.getElementById("prizeSelect");
+    for (let prizeName in prizeDatabase) {
+        let option = document.createElement("option");
+        option.value = prizeName;
+        option.textContent = prizeName;
+        selectEl.appendChild(option);
+    }
+
+    // 查詢函數
+    function queryPrize() {
+        const selectedPrize = selectEl.value;
+        const resultCard = document.getElementById("resultCard");
+        const emptyState = document.getElementById("emptyState");
+        
+        if (selectedPrize && prizeDatabase[selectedPrize]) {
+            document.getElementById("giftValue").textContent = prizeDatabase[selectedPrize].gift;
+            document.getElementById("numberValue").textContent = prizeDatabase[selectedPrize].number;
+            
+            resultCard.style.display = "block";
+            emptyState.style.display = "none";
+        } else {
+            resultCard.style.display = "none";
+            emptyState.style.display = "block";
+        }
+    }
+</script>
+
+</body>
+</html>
